@@ -1,0 +1,23 @@
+{# Bloco dos resultados. Usado na página inicial e devolvido sozinho por /pesquisa. #}
+
+{% if mostrar_criar %}
+<form action="{{ url_for('criar_tema') }}" method="post" class="criar">
+  <input type="hidden" name="nome" value="{{ termo }}">
+  <button type="submit">Criar tema "{{ termo }}"</button>
+</form>
+{% endif %}
+
+{% if temas %}
+<ul class="lista-temas">
+  {% for tema in temas %}
+  <li>
+    <a href="{{ url_for('ver_tema', tema_id=tema.id) }}">
+      <span class="nome">{{ tema.nome }}</span>
+      <span class="etiqueta">{{ tema.categoria }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% elif not termo %}
+<p class="vazio">Ainda não tens temas. Escreve um nome acima para criares o primeiro.</p>
+{% endif %}

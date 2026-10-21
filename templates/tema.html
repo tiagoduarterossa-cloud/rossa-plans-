@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ tema.nome }} · Caderno{% endblock %}
+
+{% block conteudo %}
+<a href="{{ url_for('inicio') }}" class="voltar">&larr; Voltar</a>
+
+<header class="cabecalho-tema">
+  <h1>{{ tema.nome }}</h1>
+  <p class="detalhes">
+    <span class="etiqueta">{{ tema.categoria }}</span>
+    Criado a {{ tema.criado_em | data }} · Alterado a {{ tema.alterado_em | data }}
+  </p>
+</header>
+
+<form action="{{ url_for('acrescentar_entrada', tema_id=tema.id) }}" method="post" class="nova-entrada">
+  <textarea name="texto" rows="3" placeholder="Nova entrada..." required autofocus></textarea>
+  <button type="submit">Acrescentar</button>
+</form>
+
+{% if entradas %}
+<ul class="lista-entradas">
+  {% for entrada in entradas %}
+  <li>
+    <time>{{ entrada.criado_em | data }}</time>
+    <p>{{ entrada.texto }}</p>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="vazio">Este tema ainda não tem entradas.</p>
+{% endif %}
+{% endblock %}

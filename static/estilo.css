@@ -1,0 +1,118 @@
+/* Cores guardadas em variáveis, para mudar tudo num só sítio */
+:root {
+  --fundo: #fafaf8;
+  --cartao: #ffffff;
+  --texto: #222;
+  --suave: #6b6b6b;
+  --linha: #e2e2dc;
+  --destaque: #2f6f5e;
+}
+
+/* Se o computador estiver em modo escuro, usa estas cores */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #1c1d1f;
+    --cartao: #26282b;
+    --texto: #e8e8e6;
+    --suave: #9a9a96;
+    --linha: #3a3c40;
+    --destaque: #7cc4ad;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+/* Coluna central com largura máxima; em janelas pequenas ocupa tudo */
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+a { color: var(--destaque); }
+
+.logotipo { margin: 24px 0 16px; font-size: 1.6rem; }
+
+/* Campos de texto e botões */
+input[type="search"], textarea {
+  width: 100%;
+  padding: 14px 16px;
+  font: inherit;
+  color: var(--texto);
+  background: var(--cartao);
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+}
+.pesquisa input { font-size: 1.25rem; }
+input:focus, textarea:focus { outline: 2px solid var(--destaque); border-color: transparent; }
+
+button {
+  padding: 10px 18px;
+  font: inherit;
+  color: #fff;
+  background: var(--destaque);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+@media (prefers-color-scheme: dark) { button { color: #102019; } }
+
+.criar { margin: 16px 0; }
+
+/* Lista de temas na página inicial */
+.lista-temas, .lista-entradas { list-style: none; padding: 0; margin: 16px 0; }
+.lista-temas li + li { margin-top: 8px; }
+.lista-temas a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--texto);
+  text-decoration: none;
+  background: var(--cartao);
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+}
+.lista-temas a:hover { border-color: var(--destaque); }
+
+.etiqueta {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 0.8rem;
+  color: var(--suave);
+  border: 1px solid var(--linha);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.vazio { color: var(--suave); }
+
+/* Página de um tema */
+.voltar { display: inline-block; margin-top: 8px; text-decoration: none; }
+.cabecalho-tema h1 { margin: 16px 0 4px; overflow-wrap: anywhere; }
+.detalhes { margin: 0 0 20px; color: var(--suave); font-size: 0.9rem; }
+.detalhes .etiqueta { margin-right: 8px; }
+
+.nova-entrada { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.nova-entrada textarea { resize: vertical; }
+
+.lista-entradas li {
+  padding: 14px 16px;
+  background: var(--cartao);
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+}
+.lista-entradas li + li { margin-top: 10px; }
+.lista-entradas time { font-size: 0.8rem; color: var(--suave); }
+/* pre-wrap respeita as mudanças de linha que escreves */
+.lista-entradas p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }

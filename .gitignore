@@ -1,0 +1,9 @@
+# A base de dados tem os teus dados pessoais: nunca vai para o Git
+caderno.db
+*.db-journal
+copias/
+
+# Ambiente virtual e ficheiros temporários do Python
+.venv/
+__pycache__/
+*.pyc
