@@ -7,7 +7,17 @@ podes criá-lo logo ali.
 Corre só no teu computador. Não tem contas nem precisa de internet
 (só para instalar o Flask da primeira vez).
 
-## Arrancar pela primeira vez
+## Windows: duplo clique
+
+Faz duplo clique em `arrancar.bat`. Na primeira vez prepara tudo sozinho
+(precisa de internet só para instalar o Flask) e depois abre o browser em
+<http://localhost:5000>. A app funciona enquanto a janela preta estiver aberta.
+Para parar, fecha essa janela.
+
+Se o Windows mostrar "O Windows protegeu o seu PC", carrega em "Mais informações"
+e depois em "Executar mesmo assim".
+
+## Arrancar à mão, pelo terminal
 
 Precisas do Python 3.9 ou mais recente. Abre um terminal na pasta do projeto.
 
