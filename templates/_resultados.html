@@ -1,23 +1,48 @@
 {# Bloco dos resultados. Usado na página inicial e devolvido sozinho por /pesquisa. #}
+{% from "_componentes.html" import icone, etiqueta, campo_categoria %}
+
+{# Filtro por categoria: cada "pastilha" é um link que mantém o que escreveste #}
+<nav class="filtros" aria-label="Filtrar por categoria">
+  <a href="{{ url_for('inicio', q=termo or None) }}"
+     class="filtro {% if not categoria_atual %}ativo{% endif %}">Todas</a>
+  {% for c in categorias %}
+  <a href="{{ url_for('inicio', q=termo or None, cat=c.id) }}"
+     class="filtro cor-{{ c.id % 8 }} {% if c.id == categoria_atual %}ativo{% endif %}">
+    <span class="bolinha"></span>{{ c.nome }} <span class="contagem">{{ c.total }}</span>
+  </a>
+  {% endfor %}
+</nav>
 
 {% if mostrar_criar %}
-<form action="{{ url_for('criar_tema') }}" method="post" class="criar">
+<form action="{{ url_for('criar_tema') }}" method="post" class="cartao criar">
   <input type="hidden" name="nome" value="{{ termo }}">
-  <button type="submit">Criar tema "{{ termo }}"</button>
+  <p>Ainda não existe o tema <strong>{{ termo }}</strong>.</p>
+  <div class="linha">
+    {{ campo_categoria(categorias, categoria_atual) }}
+    <button type="submit" class="botao">{{ icone('mais') }} Criar tema</button>
+  </div>
 </form>
 {% endif %}
 
 {% if temas %}
-<ul class="lista-temas">
+<ul class="grelha-temas">
   {% for tema in temas %}
   <li>
-    <a href="{{ url_for('ver_tema', tema_id=tema.id) }}">
+    <a href="{{ url_for('ver_tema', tema_id=tema.id) }}" class="cartao tema cor-{{ tema.categoria_id % 8 }}">
       <span class="nome">{{ tema.nome }}</span>
-      <span class="etiqueta">{{ tema.categoria }}</span>
+      {{ etiqueta(tema.categoria, tema.categoria_id) }}
+      <span class="resumo">
+        {{ tema.total_entradas }} {{ "entrada" if tema.total_entradas == 1 else "entradas" }}
+        {% if tema.por_fazer %}<span class="pendentes">{{ tema.por_fazer }} por fazer</span>{% endif %}
+      </span>
+      <span class="data">Alterado a {{ tema.alterado_em | data }}</span>
     </a>
   </li>
   {% endfor %}
 </ul>
 {% elif not termo %}
-<p class="vazio">Ainda não tens temas. Escreve um nome acima para criares o primeiro.</p>
+<p class="vazio">
+  {% if categoria_atual %}Não há temas nesta categoria.
+  {% else %}Ainda não tens temas. Escreve um nome acima para criares o primeiro.{% endif %}
+</p>
 {% endif %}

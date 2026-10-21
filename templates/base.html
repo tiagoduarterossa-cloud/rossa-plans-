@@ -6,11 +6,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}Caderno{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+  <!-- "defer" faz o script correr só depois de a página estar toda carregada -->
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
   <main>
     {# Cada página "preenche" este bloco com o seu conteúdo #}
     {% block conteudo %}{% endblock %}
   </main>
+
+  {# Mensagens do flash() ("Tema apagado", etc.). Aparecem em baixo e desaparecem sozinhas. #}
+  {% with mensagens = get_flashed_messages(with_categories=true) %}
+  {% if mensagens %}
+  <div class="avisos" role="status">
+    {% for tipo, texto in mensagens %}
+    <div class="aviso {{ tipo }}">{{ texto }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {# Janela de confirmação antes de apagar. O JavaScript abre-a e muda o texto. #}
+  <dialog id="confirmacao">
+    <form method="dialog">
+      <h2>Tens a certeza?</h2>
+      <p id="confirmacao-texto"></p>
+      <div class="acoes">
+        <button value="cancelar" class="botao secundario">Cancelar</button>
+        <button value="confirmar" class="botao perigo">Apagar</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>

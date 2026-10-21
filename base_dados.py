@@ -104,24 +104,70 @@ def iniciar_bd():
     bd.close()
 
 
-# ---------- Temas ----------
+# ---------- Categorias ----------
 
-def procurar_temas(termo):
-    """
-    Temas cujo nome contém o termo, sem ligar a maiúsculas nem acentos.
-    Sem termo, devolve todos.
-    """
+def listar_categorias():
+    """Todas as categorias por ordem alfabética, com "Outros" no fim e o total de temas de cada uma."""
     bd = obter_ligacao()
-    # instr(a, b) diz em que posição o texto b aparece dentro de a (0 = não aparece)
+    # LEFT JOIN para aparecerem também as categorias que ainda não têm temas.
+    # "nome = 'Outros'" vale 0 ou 1, por isso ordenar por isso empurra "Outros" para o fim.
     return bd.execute(
         """
-        SELECT temas.id, temas.nome, categorias.nome AS categoria
+        SELECT categorias.id, categorias.nome, COUNT(temas.id) AS total
+        FROM categorias
+        LEFT JOIN temas ON temas.categoria_id = categorias.id
+        GROUP BY categorias.id
+        ORDER BY categorias.nome = 'Outros', normalizar(categorias.nome)
+        """
+    ).fetchall()
+
+
+def obter_categoria(categoria_id):
+    """Uma categoria pelo id, ou None."""
+    bd = obter_ligacao()
+    return bd.execute("SELECT * FROM categorias WHERE id = ?", (categoria_id,)).fetchone()
+
+
+def obter_ou_criar_categoria(nome):
+    """Devolve o id da categoria com este nome; se não existir, cria-a."""
+    bd = obter_ligacao()
+    existente = bd.execute(
+        "SELECT id FROM categorias WHERE normalizar(nome) = ?", (normalizar(nome),)
+    ).fetchone()
+    if existente:
+        return existente["id"]
+    cursor = bd.execute("INSERT INTO categorias (nome) VALUES (?)", (nome,))
+    bd.commit()
+    return cursor.lastrowid
+
+
+# ---------- Temas ----------
+
+def procurar_temas(termo, categoria_id=None):
+    """
+    Temas cujo nome contém o termo, sem ligar a maiúsculas nem acentos.
+    Sem termo, devolve todos. Com categoria_id, só os dessa categoria.
+    """
+    bd = obter_ligacao()
+    # instr(a, b) diz em que posição o texto b aparece dentro de a (0 = não aparece).
+    # As duas subconsultas (SELECT COUNT...) contam as entradas e as tarefas por fazer de cada tema.
+    # "? IS NULL OR ..." faz com que, sem categoria escolhida, o filtro não se aplique.
+    return bd.execute(
+        """
+        SELECT temas.id, temas.nome, temas.alterado_em, temas.categoria_id,
+               categorias.nome AS categoria,
+               (SELECT COUNT(*) FROM entradas
+                 WHERE entradas.tema_id = temas.id) AS total_entradas,
+               (SELECT COUNT(*) FROM entradas
+                 WHERE entradas.tema_id = temas.id
+                   AND tipo = 'tarefa' AND feito = 0) AS por_fazer
         FROM temas
         JOIN categorias ON categorias.id = temas.categoria_id
         WHERE instr(normalizar(temas.nome), ?) > 0
+          AND (? IS NULL OR temas.categoria_id = ?)
         ORDER BY normalizar(temas.nome)
         """,
-        (normalizar(termo),),
+        (normalizar(termo), categoria_id, categoria_id),
     ).fetchall()
 
 
@@ -134,19 +180,33 @@ def procurar_tema_por_nome(nome):
     ).fetchone()
 
 
-def criar_tema(nome, categoria="Outros"):
+def criar_tema(nome, categoria_id):
     """Cria um tema novo e devolve o id que a base de dados lhe deu."""
     bd = obter_ligacao()
     momento = agora()
     cursor = bd.execute(
-        """
-        INSERT INTO temas (nome, categoria_id, criado_em, alterado_em)
-        VALUES (?, (SELECT id FROM categorias WHERE nome = ?), ?, ?)
-        """,
-        (nome, categoria, momento, momento),
+        "INSERT INTO temas (nome, categoria_id, criado_em, alterado_em) VALUES (?, ?, ?, ?)",
+        (nome, categoria_id, momento, momento),
     )
     bd.commit()
     return cursor.lastrowid
+
+
+def editar_tema(tema_id, nome, categoria_id):
+    """Muda o nome e a categoria de um tema."""
+    bd = obter_ligacao()
+    bd.execute(
+        "UPDATE temas SET nome = ?, categoria_id = ?, alterado_em = ? WHERE id = ?",
+        (nome, categoria_id, agora(), tema_id),
+    )
+    bd.commit()
+
+
+def apagar_tema(tema_id):
+    """Apaga o tema. As entradas vão com ele por causa do ON DELETE CASCADE."""
+    bd = obter_ligacao()
+    bd.execute("DELETE FROM temas WHERE id = ?", (tema_id,))
+    bd.commit()
 
 
 def obter_tema(tema_id):
@@ -175,13 +235,47 @@ def listar_entradas(tema_id):
     ).fetchall()
 
 
+def obter_entrada(entrada_id):
+    """Uma entrada pelo id, ou None."""
+    bd = obter_ligacao()
+    return bd.execute("SELECT * FROM entradas WHERE id = ?", (entrada_id,)).fetchone()
+
+
+def _marcar_tema_alterado(bd, tema_id):
+    """Qualquer mudança numa entrada conta como alteração do tema."""
+    bd.execute("UPDATE temas SET alterado_em = ? WHERE id = ?", (agora(), tema_id))
+
+
 def acrescentar_entrada(tema_id, texto, tipo="nota"):
     """Guarda uma entrada nova e atualiza a data de alteração do tema."""
     bd = obter_ligacao()
-    momento = agora()
     bd.execute(
         "INSERT INTO entradas (tema_id, texto, tipo, criado_em) VALUES (?, ?, ?, ?)",
-        (tema_id, texto, tipo, momento),
+        (tema_id, texto, tipo, agora()),
     )
-    bd.execute("UPDATE temas SET alterado_em = ? WHERE id = ?", (momento, tema_id))
+    _marcar_tema_alterado(bd, tema_id)
+    bd.commit()
+
+
+def editar_entrada(entrada, texto):
+    """Muda o texto de uma entrada (recebe a linha que veio de obter_entrada)."""
+    bd = obter_ligacao()
+    bd.execute("UPDATE entradas SET texto = ? WHERE id = ?", (texto, entrada["id"]))
+    _marcar_tema_alterado(bd, entrada["tema_id"])
+    bd.commit()
+
+
+def alternar_feito(entrada):
+    """Tarefa feita passa a por fazer e vice-versa. "1 - feito" troca 0 por 1 e 1 por 0."""
+    bd = obter_ligacao()
+    bd.execute("UPDATE entradas SET feito = 1 - feito WHERE id = ?", (entrada["id"],))
+    _marcar_tema_alterado(bd, entrada["tema_id"])
+    bd.commit()
+
+
+def apagar_entrada(entrada):
+    """Apaga uma entrada."""
+    bd = obter_ligacao()
+    bd.execute("DELETE FROM entradas WHERE id = ?", (entrada["id"],))
+    _marcar_tema_alterado(bd, entrada["tema_id"])
     bd.commit()

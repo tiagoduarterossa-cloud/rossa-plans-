@@ -72,4 +72,15 @@ por isso nunca é enviado para o GitHub.
 - `app.py` - o servidor: cada endereço (página) e o que acontece lá
 - `base_dados.py` - tudo o que lê e escreve na base de dados
 - `templates/` - o HTML das páginas
+  - `base.html` - a moldura comum (avisos e janela de confirmação)
+  - `inicio.html` e `_resultados.html` - pesquisa, filtros e lista de temas
+  - `tema.html` - a página de um tema
+  - `_componentes.html` - peças reutilizáveis (ícones, etiquetas, escolha de categoria)
 - `static/estilo.css` - o aspeto visual
+- `static/app.js` - o que acontece no browser sem recarregar a página
+
+## Atalhos de teclado
+
+- `/` na página inicial vai para a pesquisa
+- `Ctrl+Enter` guarda o texto que estás a escrever
+- `Esc` cancela uma edição

@@ -1,33 +1,105 @@
 {% extends "base.html" %}
+{% from "_componentes.html" import icone, etiqueta, campo_categoria %}
 
 {% block titulo %}{{ tema.nome }} · Caderno{% endblock %}
 
 {% block conteudo %}
-<a href="{{ url_for('inicio') }}" class="voltar">&larr; Voltar</a>
+<a href="{{ url_for('inicio') }}" class="voltar">{{ icone('voltar') }} Todos os temas</a>
 
-<header class="cabecalho-tema">
-  <h1>{{ tema.nome }}</h1>
-  <p class="detalhes">
-    <span class="etiqueta">{{ tema.categoria }}</span>
-    Criado a {{ tema.criado_em | data }} · Alterado a {{ tema.alterado_em | data }}
-  </p>
+{#
+  "data-editavel" marca um bloco que tem duas versões: ver e editar.
+  O botão com "data-alternar" troca entre elas (ver static/app.js).
+#}
+<header class="cabecalho-tema" data-editavel>
+  <div class="modo-ver">
+    <div class="titulo-linha">
+      <h1>{{ tema.nome }}</h1>
+      <div class="acoes-tema">
+        <button type="button" class="botao secundario" data-alternar>{{ icone('lapis') }} Editar</button>
+        <form action="{{ url_for('apagar_tema', tema_id=tema.id) }}" method="post"
+              data-confirmar="Vais apagar o tema &quot;{{ tema.nome }}&quot; e as suas {{ entradas | length }} entradas. Isto não se pode desfazer.">
+          <button type="submit" class="botao secundario perigo">{{ icone('lixo') }} Apagar</button>
+        </form>
+      </div>
+    </div>
+    <p class="detalhes">
+      {{ etiqueta(tema.categoria, tema.categoria_id) }}
+      <span>{{ entradas | length }} {{ "entrada" if entradas | length == 1 else "entradas" }}</span>
+      <span id="contador-por-fazer" {% if not por_fazer %}class="escondido"{% endif %}>
+        · <strong class="pendentes"><span>{{ por_fazer }}</span> por fazer</strong>
+      </span>
+      <span>· Alterado a {{ tema.alterado_em | data }}</span>
+    </p>
+  </div>
+
+  <form action="{{ url_for('editar_tema', tema_id=tema.id) }}" method="post" class="modo-editar cartao">
+    <label>Nome
+      <input type="text" name="nome" value="{{ tema.nome }}" required maxlength="100">
+    </label>
+    <label>Categoria
+      {{ campo_categoria(categorias, tema.categoria_id) }}
+    </label>
+    <div class="acoes">
+      <button type="button" class="botao secundario" data-alternar>Cancelar</button>
+      <button type="submit" class="botao">Guardar</button>
+    </div>
+  </form>
 </header>
 
-<form action="{{ url_for('acrescentar_entrada', tema_id=tema.id) }}" method="post" class="nova-entrada">
-  <textarea name="texto" rows="3" placeholder="Nova entrada..." required autofocus></textarea>
-  <button type="submit">Acrescentar</button>
+{# Nova entrada. O tipo escolhe-se com dois botões de rádio desenhados como interruptor. #}
+<form action="{{ url_for('acrescentar_entrada', tema_id=tema.id) }}" method="post" class="cartao nova-entrada">
+  <textarea name="texto" rows="3" placeholder="Escreve uma nota ou uma tarefa..." required autofocus></textarea>
+  <div class="linha">
+    <div class="interruptor" role="radiogroup" aria-label="Tipo de entrada">
+      <label><input type="radio" name="tipo" value="nota" checked>{{ icone('nota') }} Nota</label>
+      <label><input type="radio" name="tipo" value="tarefa">{{ icone('tarefa') }} Tarefa</label>
+    </div>
+    <span class="dica"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> para guardar</span>
+    <button type="submit" class="botao">{{ icone('mais') }} Acrescentar</button>
+  </div>
 </form>
 
 {% if entradas %}
 <ul class="lista-entradas">
   {% for entrada in entradas %}
-  <li>
-    <time>{{ entrada.criado_em | data }}</time>
-    <p>{{ entrada.texto }}</p>
+  <li id="entrada-{{ entrada.id }}"
+      class="cartao entrada {{ entrada.tipo }} {% if entrada.feito %}feito{% endif %}" data-editavel>
+
+    <div class="modo-ver">
+      {% if entrada.tipo == "tarefa" %}
+      <form action="{{ url_for('alternar_feito', entrada_id=entrada.id) }}" method="post" class="form-feito">
+        <input type="checkbox" {% if entrada.feito %}checked{% endif %} aria-label="Tarefa feita">
+        <noscript><button type="submit">Guardar</button></noscript>
+      </form>
+      {% else %}
+      <span class="tipo-icone" title="Nota">{{ icone('nota') }}</span>
+      {% endif %}
+
+      <div class="corpo">
+        <p>{{ entrada.texto }}</p>
+        <time>{{ entrada.criado_em | data }}</time>
+      </div>
+
+      <div class="acoes-entrada">
+        <button type="button" class="botao-icone" data-alternar title="Editar">{{ icone('lapis') }}</button>
+        <form action="{{ url_for('apagar_entrada', entrada_id=entrada.id) }}" method="post"
+              data-confirmar="Vais apagar esta {{ entrada.tipo }}. Isto não se pode desfazer.">
+          <button type="submit" class="botao-icone perigo" title="Apagar">{{ icone('lixo') }}</button>
+        </form>
+      </div>
+    </div>
+
+    <form action="{{ url_for('editar_entrada', entrada_id=entrada.id) }}" method="post" class="modo-editar">
+      <textarea name="texto" rows="3" required>{{ entrada.texto }}</textarea>
+      <div class="acoes">
+        <button type="button" class="botao secundario" data-alternar>Cancelar</button>
+        <button type="submit" class="botao">Guardar</button>
+      </div>
+    </form>
   </li>
   {% endfor %}
 </ul>
 {% else %}
-<p class="vazio">Este tema ainda não tem entradas.</p>
+<p class="vazio">Este tema ainda não tem entradas. Escreve a primeira acima.</p>
 {% endif %}
 {% endblock %}

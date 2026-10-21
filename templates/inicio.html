@@ -1,34 +1,22 @@
 {% extends "base.html" %}
+{% from "_componentes.html" import icone %}
 
 {% block conteudo %}
-<h1 class="logotipo">Caderno</h1>
+<header class="topo">
+  <h1 class="logotipo">Caderno</h1>
+  <span class="dica">Carrega em <kbd>/</kbd> para pesquisar</span>
+</header>
 
 {# O formulário funciona mesmo sem JavaScript: Enter recarrega a página com ?q=... #}
-<form action="{{ url_for('inicio') }}" method="get" class="pesquisa">
+<form action="{{ url_for('inicio') }}" method="get" class="pesquisa" id="form-pesquisa">
+  {{ icone('pesquisa') }}
   <input type="search" name="q" id="campo-pesquisa" value="{{ termo }}"
-         placeholder="Escreve o nome de um tema..." autocomplete="off" autofocus>
+         placeholder="Procura ou cria um tema..." autocomplete="off" autofocus>
+  {# Guarda o filtro de categoria para não se perder enquanto escreves #}
+  {% if categoria_atual %}<input type="hidden" name="cat" value="{{ categoria_atual }}">{% endif %}
 </form>
 
 <div id="resultados">
   {% include "_resultados.html" %}
 </div>
-
-<script>
-  // Enquanto escreves, pede ao servidor a lista atualizada sem recarregar a página.
-  const campo = document.getElementById("campo-pesquisa");
-  const resultados = document.getElementById("resultados");
-  let temporizador;
-
-  campo.addEventListener("input", () => {
-    // Espera 200 ms depois da última tecla, para não fazer um pedido por cada letra
-    clearTimeout(temporizador);
-    temporizador = setTimeout(async () => {
-      const termo = campo.value.trim();
-      const resposta = await fetch("/pesquisa?q=" + encodeURIComponent(termo));
-      resultados.innerHTML = await resposta.text();
-      // Atualiza o endereço, para o F5 ou o botão "voltar" manterem a pesquisa
-      history.replaceState(null, "", termo ? "/?q=" + encodeURIComponent(termo) : "/");
-    }, 200);
-  });
-</script>
 {% endblock %}
