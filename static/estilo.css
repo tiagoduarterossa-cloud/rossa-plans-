@@ -11,6 +11,7 @@
   --destaque-suave: #e3efe9;
   --perigo: #b3402f;
   --perigo-suave: #f8e6e2;
+  --marca: #fff1b8;
   --sombra: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 14px rgb(0 0 0 / 0.05);
   --raio: 14px;
 }
@@ -27,19 +28,21 @@
     --destaque-suave: #1f3530;
     --perigo: #ee8a77;
     --perigo-suave: #3a2420;
+    --marca: #4a4220;
     --sombra: 0 1px 2px rgb(0 0 0 / 0.3);
   }
 }
 
-/* As 8 cores das categorias (a categoria com id 9 volta a usar a cor 1, etc.) */
-.cor-0 { --cor: #8a8f98; }
-.cor-1 { --cor: #3f7fd9; }
-.cor-2 { --cor: #d9822b; }
-.cor-3 { --cor: #9b59c9; }
-.cor-4 { --cor: #2fa37a; }
-.cor-5 { --cor: #d64f6e; }
-.cor-6 { --cor: #c9a227; }
-.cor-7 { --cor: #2aa1b3; }
+/* As 8 cores que podes escolher para as categorias. Sem categoria fica cinzento. */
+.cor-0 { --cor: #3f7fd9; }
+.cor-1 { --cor: #d9822b; }
+.cor-2 { --cor: #9b59c9; }
+.cor-3 { --cor: #2fa37a; }
+.cor-4 { --cor: #d64f6e; }
+.cor-5 { --cor: #c9a227; }
+.cor-6 { --cor: #2aa1b3; }
+.cor-7 { --cor: #5b5bd6; }
+.cor-nenhuma { --cor: #9a9ca1; }
 
 
 /* ============================================================
@@ -61,8 +64,10 @@ body {
 main {
   max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px 96px;
+  padding: 8px 16px 96px;
 }
+main.largo { max-width: 1180px; }
+main.centrado { min-height: 100vh; display: grid; place-items: center; padding-top: 24px; }
 
 a { color: var(--destaque); }
 h1, h2 { line-height: 1.2; }
@@ -80,12 +85,15 @@ h1, h2 { line-height: 1.2; }
 
 .escondido { display: none !important; }
 .vazio { color: var(--suave); text-align: center; padding: 40px 0; }
+.vazio p { margin: 0 0 8px; }
+.vazio-titulo { font-size: 1.15rem; color: var(--texto); font-weight: 600; }
 
 .dica { color: var(--suave); font-size: 0.8rem; }
 kbd {
   padding: 1px 6px;
   font: inherit;
   font-size: 0.75rem;
+  color: var(--suave);
   border: 1px solid var(--linha);
   border-bottom-width: 2px;
   border-radius: 5px;
@@ -100,13 +108,15 @@ kbd {
 }
 
 .linha { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.acoes { display: flex; justify-content: flex-end; gap: 8px; }
+.acoes { display: flex; justify-content: flex-end; gap: 8px; margin-left: auto; }
+
+.erro-texto { color: var(--perigo); margin: 12px 0 0; }
 
 
 /* ============================================================
    Campos de texto e botões
    ============================================================ */
-input[type="text"], input[type="search"], textarea, select {
+input[type="text"], input[type="search"], input[type="password"], textarea, select {
   width: 100%;
   padding: 10px 12px;
   font: inherit;
@@ -127,11 +137,13 @@ input:focus, textarea:focus, select:focus {
 .botao {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 9px 16px;
   font: inherit;
   font-weight: 600;
   color: #fff;
+  text-decoration: none;
   background: var(--destaque);
   border: 1px solid transparent;
   border-radius: 10px;
@@ -140,6 +152,7 @@ input:focus, textarea:focus, select:focus {
   transition: filter 0.15s, background 0.15s;
 }
 .botao:hover { filter: brightness(1.08); }
+.botao:disabled { opacity: 0.6; cursor: wait; }
 @media (prefers-color-scheme: dark) { .botao { color: #0f1f1a; } }
 
 .botao.secundario {
@@ -148,13 +161,16 @@ input:focus, textarea:focus, select:focus {
   border-color: var(--linha);
   font-weight: 500;
 }
-.botao.secundario:hover { background: var(--fundo); filter: none; }
+.botao.secundario:hover { background: var(--cartao); filter: none; }
 
-.botao.perigo { background: var(--perigo); }
+.botao.perigo { background: var(--perigo); color: #fff; }
 .botao.secundario.perigo { color: var(--perigo); background: transparent; }
 .botao.secundario.perigo:hover { background: var(--perigo-suave); }
 
-/* Botões pequenos só com ícone (editar e apagar entradas) */
+.botao.pequeno { padding: 6px 12px; font-size: 0.9rem; }
+.botao.largo { width: 100%; padding: 12px; }
+
+/* Botões pequenos só com ícone (editar e apagar) */
 .botao-icone {
   display: inline-grid;
   place-items: center;
@@ -172,18 +188,83 @@ input:focus, textarea:focus, select:focus {
 
 
 /* ============================================================
-   Página inicial
+   Barra do topo
    ============================================================ */
-.topo {
+.barra {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  margin: 16px 0 20px;
+  align-items: center;
+  gap: 12px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 16px 12px;
 }
-.logotipo { margin: 0; font-size: 1.75rem; letter-spacing: -0.02em; }
+/* A barra acompanha a largura do conteúdo da página */
+.barra.largo { max-width: 1180px; }
+.barra nav { display: flex; gap: 8px; }
+.logotipo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--texto);
+  text-decoration: none;
+}
 
+
+/* ============================================================
+   Página de desbloquear
+   ============================================================ */
+.cofre {
+  width: min(420px, 100%);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+.cofre h1 { margin: 0; font-size: 1.5rem; }
+.cofre p { margin: 0; color: var(--suave); }
+.cadeado-grande {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 4px;
+  color: var(--destaque);
+  background: var(--destaque-suave);
+  border-radius: 50%;
+}
+.cadeado-grande .icone { width: 30px; height: 30px; }
+.cofre .alerta {
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  text-align: left;
+  color: var(--texto);
+  background: var(--perigo-suave);
+  border-radius: 10px;
+}
+.cofre .nota-info { color: var(--destaque); font-weight: 500; }
+
+.alerta-copia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 16px;
+  padding: 12px 16px;
+  background: var(--perigo-suave);
+  border-color: transparent;
+  box-shadow: none;
+}
+.alerta-copia p { margin: 0; flex: 1 1 300px; font-size: 0.9rem; }
+
+
+/* ============================================================
+   Página inicial
+   ============================================================ */
 /* Barra de pesquisa grande, com a lupa lá dentro */
-.pesquisa { position: relative; }
+.pesquisa { position: relative; margin-top: 8px; }
 .pesquisa .icone {
   position: absolute;
   left: 18px;
@@ -195,10 +276,18 @@ input:focus, textarea:focus, select:focus {
   pointer-events: none;
 }
 .pesquisa input {
-  padding: 16px 18px 16px 52px;
+  padding: 16px 52px;
   font-size: 1.2rem;
   border-radius: var(--raio);
   box-shadow: var(--sombra);
+}
+.pesquisa input::-webkit-search-cancel-button { display: none; }
+.pesquisa .atalho {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 /* Pastilhas do filtro de categoria; em ecrãs estreitos deslizam para o lado */
@@ -228,8 +317,11 @@ input:focus, textarea:focus, select:focus {
 .filtro.ativo { color: var(--fundo); background: var(--texto); border-color: var(--texto); }
 .filtro .contagem { color: var(--suave); font-size: 0.8rem; }
 .filtro.ativo .contagem { color: inherit; opacity: 0.7; }
+.filtro.gerir { color: var(--suave); background: transparent; border-style: dashed; }
+.filtro.gerir .icone { width: 14px; height: 14px; }
 
 .bolinha {
+  flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -281,13 +373,41 @@ input:focus, textarea:focus, select:focus {
 
 
 /* ============================================================
+   Página das categorias
+   ============================================================ */
+.titulo-pagina { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
+.subtitulo { margin: 6px 0 20px; color: var(--suave); }
+
+.nova-categoria { display: flex; flex-direction: column; gap: 12px; padding: 16px; margin-bottom: 20px; }
+.nova-categoria .botao { margin-left: auto; }
+
+.lista-categorias { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
+.lista-categorias li { padding: 10px 12px 10px 16px; }
+.lista-categorias .modo-ver { display: flex; align-items: center; gap: 12px; }
+.lista-categorias .nome { flex: 1; color: var(--texto); font-weight: 600; text-decoration: none; }
+.lista-categorias .nome:hover { text-decoration: underline; }
+.lista-categorias .contagem { color: var(--suave); font-size: 0.85rem; }
+.lista-categorias .modo-editar { flex-direction: column; gap: 10px; padding: 4px 0; }
+.bolinha.grande { width: 14px; height: 14px; }
+
+/* Bolinhas para escolher a cor: o rádio fica escondido, vês só a bolinha */
+.seletor-cor { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.seletor-cor label { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
+.seletor-cor input { position: absolute; opacity: 0; pointer-events: none; }
+.seletor-cor .bolinha { width: 18px; height: 18px; transition: transform 0.1s; }
+.seletor-cor label:hover .bolinha { transform: scale(1.15); }
+.seletor-cor label:has(input:checked) { box-shadow: 0 0 0 2px var(--cor); }
+.seletor-cor label:has(input:focus-visible) { outline: 2px solid var(--destaque); }
+
+
+/* ============================================================
    Página de um tema
    ============================================================ */
 .voltar {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 8px 0 16px;
+  margin: 4px 0 12px;
   color: var(--suave);
   text-decoration: none;
   font-size: 0.9rem;
@@ -318,13 +438,20 @@ input:focus, textarea:focus, select:focus {
 .cabecalho-tema label { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--suave); }
 .cabecalho-tema label input, .cabecalho-tema label select { font-size: 1rem; }
 
+/* Duas colunas em ecrãs largos: entradas à esquerda, painéis à direita */
+.tema-grelha { display: grid; gap: 24px; }
+@media (min-width: 900px) {
+  .tema-grelha { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; }
+}
+.coluna-lateral { display: grid; gap: 16px; }
+
 /* Caixa de nova entrada */
 .nova-entrada { padding: 12px; margin-bottom: 24px; }
 .nova-entrada textarea { border: 0; box-shadow: none; padding: 6px; }
 .nova-entrada .linha { margin-top: 8px; }
 .nova-entrada .botao { margin-left: auto; }
 
-/* Interruptor Nota / Tarefa: os botões de rádio ficam escondidos, vês só as etiquetas */
+/* Interruptor (Nota / Tarefa, PT / EN / DE): os rádios ficam escondidos, vês só as etiquetas */
 .interruptor {
   display: inline-flex;
   padding: 3px;
@@ -341,6 +468,7 @@ input:focus, textarea:focus, select:focus {
   border-radius: 8px;
   cursor: pointer;
 }
+.interruptor.pequeno label { padding: 4px 10px; font-size: 0.8rem; font-weight: 600; }
 .interruptor input { position: absolute; opacity: 0; pointer-events: none; }
 .interruptor label:has(input:checked) { color: var(--texto); background: var(--cartao); box-shadow: var(--sombra); }
 .interruptor label:has(input:focus-visible) { outline: 2px solid var(--destaque); }
@@ -360,7 +488,8 @@ input:focus, textarea:focus, select:focus {
 .acoes-entrada { display: flex; gap: 2px; margin: -4px 0; }
 @media (hover: hover) {
   .acoes-entrada { opacity: 0; transition: opacity 0.15s; }
-  .entrada:hover .acoes-entrada, .entrada:focus-within .acoes-entrada { opacity: 1; }
+  .entrada:hover .acoes-entrada, .entrada:focus-within .acoes-entrada,
+  .lista-categorias li:hover .acoes-entrada, .lista-categorias li:focus-within .acoes-entrada { opacity: 1; }
 }
 
 /* Caixa de tarefa redonda, desenhada à mão */
@@ -391,6 +520,65 @@ input:focus, textarea:focus, select:focus {
 }
 .entrada.feito .corpo p { color: var(--suave); text-decoration: line-through; }
 .entrada.feito { box-shadow: none; }
+
+
+/* ============================================================
+   Painéis laterais: ligações (mentalista) e web
+   ============================================================ */
+.painel { padding: 16px; }
+.painel h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1rem; }
+.painel h2 .icone { color: var(--destaque); }
+.painel-sub { margin: 0 0 12px; font-size: 0.85rem; color: var(--suave); }
+.a-carregar { animation: piscar 1s ease-in-out infinite alternate; }
+
+.lista-ligacoes, .lista-web { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+
+.ligacao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  color: var(--texto);
+  text-decoration: none;
+  border: 1px solid var(--linha);
+  border-left: 3px solid var(--cor);
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+.ligacao:hover { background: var(--fundo); }
+.ligacao-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ligacao .nome { font-weight: 600; overflow-wrap: anywhere; }
+.selo {
+  padding: 1px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--destaque);
+  background: var(--destaque-suave);
+  border-radius: 999px;
+}
+
+/* Barra da força da ligação */
+.forca { height: 4px; background: var(--fundo); border-radius: 2px; overflow: hidden; }
+.forca span { display: block; height: 100%; background: var(--cor); border-radius: 2px; }
+
+.pistas { display: flex; flex-wrap: wrap; gap: 4px; }
+.pista {
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  color: var(--suave);
+  background: var(--fundo);
+  border-radius: 999px;
+}
+.exemplo { font-size: 0.8rem; color: var(--suave); font-style: italic; overflow-wrap: anywhere; }
+
+#resultados-web { margin-top: 12px; }
+.lista-web li { padding-top: 12px; border-top: 1px solid var(--linha); }
+.titulo-web { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; text-decoration: none; }
+.titulo-web .icone { width: 14px; height: 14px; }
+.resumo-web { margin: 4px 0 8px; font-size: 0.85rem; }
+mark { color: inherit; background: var(--marca); border-radius: 3px; padding: 0 2px; }
+.ligacoes-web { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--suave); }
+.pista-web a { color: var(--texto); text-decoration: none; border-bottom: 2px solid var(--cor); }
 
 
 /* ============================================================
@@ -426,21 +614,24 @@ dialog[open] { animation: aparecer 0.15s ease-out; }
   background: var(--texto);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
-  /* Aparece, fica 3,5 segundos e desaparece */
-  animation: aparecer 0.2s ease-out, desaparecer 0.4s ease-in 3.5s forwards;
+  /* Aparece, fica 4 segundos e desaparece */
+  animation: aparecer 0.2s ease-out, desaparecer 0.4s ease-in 4s forwards;
 }
 .aviso.erro { background: var(--perigo); color: #fff; }
 
 @keyframes aparecer { from { opacity: 0; transform: translateY(8px); } }
 @keyframes desaparecer { to { opacity: 0; visibility: hidden; } }
+@keyframes piscar { to { opacity: 0.4; } }
 
 
 /* ============================================================
    Janelas pequenas
    ============================================================ */
 @media (max-width: 560px) {
-  .topo .dica, .nova-entrada .dica { display: none; }
-  .cabecalho-tema h1 { font-size: 1.6rem; }
+  .barra nav span { display: none; }
+  .pesquisa .atalho, .nova-entrada .dica { display: none; }
+  .pesquisa input { padding-right: 16px; }
+  .cabecalho-tema h1, .titulo-pagina { font-size: 1.6rem; }
   .campo-categoria, .campo-categoria select, .campo-categoria input { width: 100%; }
-  .criar .botao { width: 100%; justify-content: center; }
+  .criar .botao { width: 100%; }
 }

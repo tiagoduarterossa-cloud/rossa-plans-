@@ -2,18 +2,28 @@
 {% from "_componentes.html" import icone %}
 
 {% block conteudo %}
-<header class="topo">
-  <h1 class="logotipo">Caderno</h1>
-  <span class="dica">Carrega em <kbd>/</kbd> para pesquisar</span>
-</header>
+{% if copia_antiga %}
+{# Lembrete enquanto existir a cópia não encriptada das fases anteriores #}
+<div class="cartao alerta-copia">
+  <p>
+    <strong>Ainda existe uma cópia das tuas notas sem encriptação</strong>
+    (caderno-antigo-NAO-ENCRIPTADO.db). Confirma que está tudo no cofre e depois apaga-a.
+  </p>
+  <form action="{{ url_for('apagar_copia_antiga') }}" method="post"
+        data-confirmar="Vais apagar a cópia antiga não encriptada. Confirma primeiro que os teus temas aparecem todos aqui.">
+    <button type="submit" class="botao perigo pequeno">{{ icone('lixo') }} Apagar cópia</button>
+  </form>
+</div>
+{% endif %}
 
 {# O formulário funciona mesmo sem JavaScript: Enter recarrega a página com ?q=... #}
 <form action="{{ url_for('inicio') }}" method="get" class="pesquisa" id="form-pesquisa">
   {{ icone('pesquisa') }}
   <input type="search" name="q" id="campo-pesquisa" value="{{ termo }}"
          placeholder="Procura ou cria um tema..." autocomplete="off" autofocus>
+  <kbd class="atalho">/</kbd>
   {# Guarda o filtro de categoria para não se perder enquanto escreves #}
-  {% if categoria_atual %}<input type="hidden" name="cat" value="{{ categoria_atual }}">{% endif %}
+  {% if categoria_atual is not none %}<input type="hidden" name="cat" value="{{ categoria_atual }}">{% endif %}
 </form>
 
 <div id="resultados">

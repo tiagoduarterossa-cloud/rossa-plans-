@@ -1,3 +1,4 @@
+{% from "_componentes.html" import icone %}
 <!doctype html>
 <html lang="pt-PT">
 <head>
@@ -10,7 +11,20 @@
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
-  <main>
+  {# Barra do topo. A página de desbloquear substitui este bloco por nada. #}
+  {% block barra %}
+  <header class="barra {{ self.classe_main() }}">
+    <a href="{{ url_for('inicio') }}" class="logotipo">Caderno</a>
+    <nav>
+      <a href="{{ url_for('categorias') }}" class="botao secundario pequeno">{{ icone('etiquetas') }}<span>Categorias</span></a>
+      <form action="{{ url_for('bloquear') }}" method="post">
+        <button type="submit" class="botao secundario pequeno" title="Bloquear o caderno">{{ icone('cadeado') }}<span>Bloquear</span></button>
+      </form>
+    </nav>
+  </header>
+  {% endblock %}
+
+  <main class="{% block classe_main %}{% endblock %}">
     {# Cada página "preenche" este bloco com o seu conteúdo #}
     {% block conteudo %}{% endblock %}
   </main>

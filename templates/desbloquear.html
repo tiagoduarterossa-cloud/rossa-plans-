@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import icone %}
+
+{% block titulo %}Caderno bloqueado{% endblock %}
+{% block barra %}{% endblock %}
+{% block classe_main %}centrado{% endblock %}
+
+{% block conteudo %}
+<form method="post" class="cartao cofre">
+  <div class="cadeado-grande">{{ icone('cadeado') }}</div>
+
+  {% if primeira_vez %}
+    <h1>Proteger o caderno</h1>
+    <p>Escolhe uma palavra-passe. O caderno fica encriptado no disco e só abre com ela.</p>
+    {% if tem_antigo %}
+    <p class="nota-info">Encontrei as tuas notas antigas. Vão passar para dentro do cofre.</p>
+    {% endif %}
+    <p class="alerta">
+      <strong>Não há recuperação.</strong> Se te esqueceres da palavra-passe,
+      ninguém consegue abrir o caderno, nem tu. Guarda-a num gestor de palavras-passe.
+    </p>
+    <input type="password" name="palavra_passe" placeholder="Palavra-passe (mínimo 8 caracteres)"
+           autocomplete="new-password" minlength="8" required autofocus>
+    <input type="password" name="confirmacao" placeholder="Repete a palavra-passe"
+           autocomplete="new-password" minlength="8" required>
+    <button type="submit" class="botao largo">Criar cofre</button>
+  {% else %}
+    <h1>Caderno bloqueado</h1>
+    <p>Escreve a palavra-passe para abrir.</p>
+    <input type="password" name="palavra_passe" placeholder="Palavra-passe"
+           autocomplete="current-password" required autofocus>
+    <button type="submit" class="botao largo">Desbloquear</button>
+  {% endif %}
+
+  {% if erro %}<p class="erro-texto" role="alert">{{ erro }}</p>{% endif %}
+</form>
+{% endblock %}

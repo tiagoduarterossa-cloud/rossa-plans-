@@ -20,6 +20,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem A encriptacao precisa do Python 3.11 ou mais recente
+%PY% -c "import sys; sys.exit(sys.version_info < (3, 11))"
+if errorlevel 1 (
+  echo.
+  echo O teu Python e antigo. Precisas do 3.11 ou mais recente.
+  echo Instala a versao atual em https://www.python.org/downloads/
+  echo.
+  pause
+  exit /b 1
+)
+
 rem 2. Criar o ambiente virtual, so na primeira vez
 if not exist ".venv\Scripts\python.exe" (
   echo A preparar o ambiente pela primeira vez, pode demorar um minuto...

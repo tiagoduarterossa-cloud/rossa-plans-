@@ -1,0 +1,30 @@
+{# Resultados da Wikipédia, devolvidos por /tema/<id>/web e metidos no painel pelo JavaScript #}
+{% from "_componentes.html" import icone, classe_cor %}
+
+{% if erro %}
+<p class="erro-texto">{{ erro }}</p>
+{% elif not artigos %}
+<p class="painel-sub">A Wikipédia não tem nada sobre isto. Experimenta outra língua.</p>
+{% else %}
+<ul class="lista-web">
+  {% for a in artigos %}
+  <li>
+    <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer" class="titulo-web">
+      {{ a.titulo }} {{ icone('externo') }}
+    </a>
+    {# resumo_html já vem com <mark> nas palavras que também estão no teu caderno #}
+    <p class="resumo-web">{{ a.resumo_html }}</p>
+    {% if a.ligacoes %}
+    <div class="ligacoes-web">
+      {% for l in a.ligacoes %}
+      <span class="pista-web">
+        <mark>{{ l.palavra }}</mark> →
+        {% for t in l.temas %}<a href="{{ url_for('ver_tema', tema_id=t.id) }}" class="{{ classe_cor(t.categoria_cor) }}">{{ t.nome }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

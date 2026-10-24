@@ -3,36 +3,35 @@ Tudo o que mexe na base de dados SQLite está neste ficheiro.
 
 A ideia é o app.py nunca escrever SQL diretamente: pede as coisas
 a estas funções (procurar temas, criar tema, etc.) e elas tratam do resto.
+
+A base de dados vive na memória, aberta pelo cofre.py. Sempre que algo muda,
+guardar() encripta-a e grava-a no disco.
 """
 
 import sqlite3
 import unicodedata
 from datetime import datetime
-from pathlib import Path
 
-from flask import g
+import cofre
 
-# O ficheiro da base de dados fica na mesma pasta que este código.
-CAMINHO_BD = Path(__file__).parent / "caderno.db"
-
-# Categorias que existem logo de início (na Fase 2 vais poder criar mais).
-CATEGORIAS_INICIAIS = ["Escola", "Loja", "Ideias", "Outros"]
+# Número de cores disponíveis para as categorias (definidas no estilo.css)
+NUMERO_CORES = 8
 
 # Esquema completo das tabelas.
-# Já inclui o que a Fase 2 vai precisar (categorias, tarefas, "feito"),
-# para não termos de alterar a estrutura da base de dados mais tarde.
-# "IF NOT EXISTS" faz com que isto possa correr sempre que a aplicação
-# arranca sem estragar o que já lá está.
+# "IF NOT EXISTS" faz com que isto possa correr sempre que o cofre abre
+# sem estragar o que já lá está.
+# ON DELETE SET NULL: se apagares uma categoria, os temas ficam "sem categoria".
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS categorias (
     id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL UNIQUE
+    nome TEXT NOT NULL UNIQUE,
+    cor  INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS temas (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     nome         TEXT NOT NULL UNIQUE,
-    categoria_id INTEGER NOT NULL REFERENCES categorias(id),
+    categoria_id INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
     criado_em    TEXT NOT NULL,
     alterado_em  TEXT NOT NULL
 );
@@ -66,60 +65,87 @@ def agora():
 
 
 def obter_ligacao():
+    """A base de dados aberta pelo cofre."""
+    return cofre.ligacao()
+
+
+def guardar():
+    """Confirma as alterações e grava o cofre encriptado no disco."""
+    obter_ligacao().commit()
+    cofre.gravar()
+
+
+def preparar():
     """
-    Devolve a ligação à base de dados para o pedido atual.
-
-    O 'g' do Flask é uma caixa que só dura um pedido do browser.
-    Abrimos a ligação na primeira vez que é precisa e reutilizamo-la
-    até o pedido acabar.
+    Chamado uma vez, logo a seguir a abrir o cofre.
+    Configura a ligação, cria as tabelas e atualiza bases de dados antigas.
     """
-    if "bd" not in g:
-        g.bd = sqlite3.connect(CAMINHO_BD)
-        # Permite ler colunas pelo nome: linha["nome"] em vez de linha[1]
-        g.bd.row_factory = sqlite3.Row
-        # O SQLite só respeita as ligações entre tabelas se pedirmos
-        g.bd.execute("PRAGMA foreign_keys = ON")
-        # Ensinamos ao SQLite a nossa função normalizar(), para a usar no SQL
-        g.bd.create_function("normalizar", 1, normalizar, deterministic=True)
-    return g.bd
-
-
-def fechar_ligacao(erro=None):
-    """O Flask chama isto automaticamente no fim de cada pedido."""
-    bd = g.pop("bd", None)
-    if bd is not None:
-        bd.close()
-
-
-def iniciar_bd():
-    """Cria as tabelas e as categorias iniciais, se ainda não existirem."""
-    bd = sqlite3.connect(CAMINHO_BD)
+    bd = obter_ligacao()
+    # Permite ler colunas pelo nome: linha["nome"] em vez de linha[1]
+    bd.row_factory = sqlite3.Row
+    # Ensinamos ao SQLite a nossa função normalizar(), para a usar no SQL
+    bd.create_function("normalizar", 1, normalizar, deterministic=True)
     bd.executescript(ESQUEMA)
-    # INSERT OR IGNORE: se a categoria já existir, não faz nada
-    bd.executemany(
-        "INSERT OR IGNORE INTO categorias (nome) VALUES (?)",
-        [(nome,) for nome in CATEGORIAS_INICIAIS],
-    )
-    bd.commit()
-    bd.close()
+    _atualizar_estrutura_antiga(bd)
+    # O SQLite só respeita as ligações entre tabelas se pedirmos
+    bd.execute("PRAGMA foreign_keys = ON")
+    guardar()
+
+
+def _atualizar_estrutura_antiga(bd):
+    """
+    As fases 1 e 2 criaram as tabelas de forma um pouco diferente.
+    Isto chama-se "migração": muda a estrutura sem perder os dados.
+    """
+    colunas_categorias = [c["name"] for c in bd.execute("PRAGMA table_info(categorias)")]
+    if "cor" not in colunas_categorias:
+        bd.execute("ALTER TABLE categorias ADD COLUMN cor INTEGER NOT NULL DEFAULT 0")
+        bd.execute("UPDATE categorias SET cor = id % ?", (NUMERO_CORES,))
+
+    # Antes, todos os temas tinham de ter categoria (NOT NULL).
+    # O SQLite não deixa mudar isso numa coluna, por isso criamos a tabela
+    # outra vez, copiamos os dados e trocamos. É o método que a documentação do SQLite recomenda.
+    coluna = [c for c in bd.execute("PRAGMA table_info(temas)") if c["name"] == "categoria_id"][0]
+    if coluna["notnull"]:
+        bd.executescript(
+            """
+            PRAGMA foreign_keys = OFF;
+            BEGIN;
+            CREATE TABLE temas_nova (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome         TEXT NOT NULL UNIQUE,
+                categoria_id INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
+                criado_em    TEXT NOT NULL,
+                alterado_em  TEXT NOT NULL
+            );
+            INSERT INTO temas_nova SELECT id, nome, categoria_id, criado_em, alterado_em FROM temas;
+            DROP TABLE temas;
+            ALTER TABLE temas_nova RENAME TO temas;
+            COMMIT;
+            """
+        )
 
 
 # ---------- Categorias ----------
 
 def listar_categorias():
-    """Todas as categorias por ordem alfabética, com "Outros" no fim e o total de temas de cada uma."""
+    """Todas as categorias por ordem alfabética, com o total de temas de cada uma."""
     bd = obter_ligacao()
-    # LEFT JOIN para aparecerem também as categorias que ainda não têm temas.
-    # "nome = 'Outros'" vale 0 ou 1, por isso ordenar por isso empurra "Outros" para o fim.
+    # LEFT JOIN para aparecerem também as categorias que ainda não têm temas
     return bd.execute(
         """
-        SELECT categorias.id, categorias.nome, COUNT(temas.id) AS total
+        SELECT categorias.id, categorias.nome, categorias.cor, COUNT(temas.id) AS total
         FROM categorias
         LEFT JOIN temas ON temas.categoria_id = categorias.id
         GROUP BY categorias.id
-        ORDER BY categorias.nome = 'Outros', normalizar(categorias.nome)
+        ORDER BY normalizar(categorias.nome)
         """
     ).fetchall()
+
+
+def contar_sem_categoria():
+    bd = obter_ligacao()
+    return bd.execute("SELECT COUNT(*) FROM temas WHERE categoria_id IS NULL").fetchone()[0]
 
 
 def obter_categoria(categoria_id):
@@ -128,46 +154,82 @@ def obter_categoria(categoria_id):
     return bd.execute("SELECT * FROM categorias WHERE id = ?", (categoria_id,)).fetchone()
 
 
-def obter_ou_criar_categoria(nome):
-    """Devolve o id da categoria com este nome; se não existir, cria-a."""
+def procurar_categoria_por_nome(nome):
     bd = obter_ligacao()
-    existente = bd.execute(
-        "SELECT id FROM categorias WHERE normalizar(nome) = ?", (normalizar(nome),)
+    return bd.execute(
+        "SELECT * FROM categorias WHERE normalizar(nome) = ?", (normalizar(nome),)
     ).fetchone()
+
+
+def criar_categoria(nome, cor=None):
+    """Cria uma categoria e devolve o id. Se já existir com este nome, devolve a existente."""
+    existente = procurar_categoria_por_nome(nome)
     if existente:
         return existente["id"]
-    cursor = bd.execute("INSERT INTO categorias (nome) VALUES (?)", (nome,))
-    bd.commit()
+    bd = obter_ligacao()
+    if cor is None:
+        # Sem cor escolhida, vai rodando pelas cores disponíveis
+        total = bd.execute("SELECT COUNT(*) FROM categorias").fetchone()[0]
+        cor = total % NUMERO_CORES
+    cursor = bd.execute("INSERT INTO categorias (nome, cor) VALUES (?, ?)", (nome, cor))
+    guardar()
     return cursor.lastrowid
+
+
+def editar_categoria(categoria_id, nome, cor):
+    bd = obter_ligacao()
+    bd.execute("UPDATE categorias SET nome = ?, cor = ? WHERE id = ?", (nome, cor, categoria_id))
+    guardar()
+
+
+def apagar_categoria(categoria_id):
+    """Apaga a categoria. Os temas ficam sem categoria por causa do ON DELETE SET NULL."""
+    bd = obter_ligacao()
+    bd.execute("DELETE FROM categorias WHERE id = ?", (categoria_id,))
+    guardar()
 
 
 # ---------- Temas ----------
 
+# Parte comum a várias consultas de temas: junta a categoria (que pode não existir)
+_SELECIONAR_TEMAS = """
+    SELECT temas.*,
+           categorias.nome AS categoria,
+           categorias.cor  AS categoria_cor
+    FROM temas
+    LEFT JOIN categorias ON categorias.id = temas.categoria_id
+"""
+
+
 def procurar_temas(termo, categoria_id=None):
     """
     Temas cujo nome contém o termo, sem ligar a maiúsculas nem acentos.
-    Sem termo, devolve todos. Com categoria_id, só os dessa categoria.
+    categoria_id: None = todas, 0 = só os temas sem categoria, outro = essa categoria.
     """
     bd = obter_ligacao()
-    # instr(a, b) diz em que posição o texto b aparece dentro de a (0 = não aparece).
+    if categoria_id == 0:
+        filtro, valores = "AND temas.categoria_id IS NULL", ()
+    elif categoria_id:
+        filtro, valores = "AND temas.categoria_id = ?", (categoria_id,)
+    else:
+        filtro, valores = "", ()
+
     # As duas subconsultas (SELECT COUNT...) contam as entradas e as tarefas por fazer de cada tema.
-    # "? IS NULL OR ..." faz com que, sem categoria escolhida, o filtro não se aplique.
+    # instr(a, b) diz em que posição o texto b aparece dentro de a (0 = não aparece).
     return bd.execute(
-        """
-        SELECT temas.id, temas.nome, temas.alterado_em, temas.categoria_id,
+        f"""
+        SELECT temas.*,
                categorias.nome AS categoria,
+               categorias.cor  AS categoria_cor,
+               (SELECT COUNT(*) FROM entradas WHERE tema_id = temas.id) AS total_entradas,
                (SELECT COUNT(*) FROM entradas
-                 WHERE entradas.tema_id = temas.id) AS total_entradas,
-               (SELECT COUNT(*) FROM entradas
-                 WHERE entradas.tema_id = temas.id
-                   AND tipo = 'tarefa' AND feito = 0) AS por_fazer
+                 WHERE tema_id = temas.id AND tipo = 'tarefa' AND feito = 0) AS por_fazer
         FROM temas
-        JOIN categorias ON categorias.id = temas.categoria_id
-        WHERE instr(normalizar(temas.nome), ?) > 0
-          AND (? IS NULL OR temas.categoria_id = ?)
+        LEFT JOIN categorias ON categorias.id = temas.categoria_id
+        WHERE instr(normalizar(temas.nome), ?) > 0 {filtro}
         ORDER BY normalizar(temas.nome)
         """,
-        (normalizar(termo), categoria_id, categoria_id),
+        (normalizar(termo), *valores),
     ).fetchall()
 
 
@@ -188,8 +250,14 @@ def criar_tema(nome, categoria_id):
         "INSERT INTO temas (nome, categoria_id, criado_em, alterado_em) VALUES (?, ?, ?, ?)",
         (nome, categoria_id, momento, momento),
     )
-    bd.commit()
+    guardar()
     return cursor.lastrowid
+
+
+def obter_tema(tema_id):
+    """Um tema pelo id, com o nome e a cor da categoria, ou None se não existir."""
+    bd = obter_ligacao()
+    return bd.execute(_SELECIONAR_TEMAS + " WHERE temas.id = ?", (tema_id,)).fetchone()
 
 
 def editar_tema(tema_id, nome, categoria_id):
@@ -199,28 +267,26 @@ def editar_tema(tema_id, nome, categoria_id):
         "UPDATE temas SET nome = ?, categoria_id = ?, alterado_em = ? WHERE id = ?",
         (nome, categoria_id, agora(), tema_id),
     )
-    bd.commit()
+    guardar()
 
 
 def apagar_tema(tema_id):
     """Apaga o tema. As entradas vão com ele por causa do ON DELETE CASCADE."""
     bd = obter_ligacao()
     bd.execute("DELETE FROM temas WHERE id = ?", (tema_id,))
-    bd.commit()
+    guardar()
 
 
-def obter_tema(tema_id):
-    """Um tema pelo id, com o nome da categoria, ou None se não existir."""
+def todos_os_temas_com_entradas():
+    """
+    Todos os temas, cada um com a lista das suas entradas.
+    É o que o ligacoes.py precisa para comparar temas entre si.
+    """
     bd = obter_ligacao()
-    return bd.execute(
-        """
-        SELECT temas.*, categorias.nome AS categoria
-        FROM temas
-        JOIN categorias ON categorias.id = temas.categoria_id
-        WHERE temas.id = ?
-        """,
-        (tema_id,),
-    ).fetchone()
+    temas = {t["id"]: {"tema": t, "entradas": []} for t in bd.execute(_SELECIONAR_TEMAS)}
+    for entrada in bd.execute("SELECT * FROM entradas ORDER BY criado_em DESC, id DESC"):
+        temas[entrada["tema_id"]]["entradas"].append(entrada)
+    return list(temas.values())
 
 
 # ---------- Entradas ----------
@@ -254,7 +320,7 @@ def acrescentar_entrada(tema_id, texto, tipo="nota"):
         (tema_id, texto, tipo, agora()),
     )
     _marcar_tema_alterado(bd, tema_id)
-    bd.commit()
+    guardar()
 
 
 def editar_entrada(entrada, texto):
@@ -262,7 +328,7 @@ def editar_entrada(entrada, texto):
     bd = obter_ligacao()
     bd.execute("UPDATE entradas SET texto = ? WHERE id = ?", (texto, entrada["id"]))
     _marcar_tema_alterado(bd, entrada["tema_id"])
-    bd.commit()
+    guardar()
 
 
 def alternar_feito(entrada):
@@ -270,7 +336,7 @@ def alternar_feito(entrada):
     bd = obter_ligacao()
     bd.execute("UPDATE entradas SET feito = 1 - feito WHERE id = ?", (entrada["id"],))
     _marcar_tema_alterado(bd, entrada["tema_id"])
-    bd.commit()
+    guardar()
 
 
 def apagar_entrada(entrada):
@@ -278,4 +344,4 @@ def apagar_entrada(entrada):
     bd = obter_ligacao()
     bd.execute("DELETE FROM entradas WHERE id = ?", (entrada["id"],))
     _marcar_tema_alterado(bd, entrada["tema_id"])
-    bd.commit()
+    guardar()

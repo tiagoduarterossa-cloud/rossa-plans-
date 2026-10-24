@@ -14,6 +14,11 @@
   "nota":     '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h6"/><path d="M16 13H8"/><path d="M16 17H8"/>',
   "tarefa":   '<path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
   "fechar":   '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  "cadeado":  '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  "etiquetas": '<path d="M12 2H2v10l9.3 9.3a1 1 0 0 0 1.4 0l8.6-8.6a1 1 0 0 0 0-1.4Z"/><circle cx="7" cy="7" r="1.5"/>',
+  "olho":     '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  "globo":    '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  "externo":  '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
 } %}
 
 {% macro icone(nome) -%}
@@ -21,24 +26,44 @@
 {%- endmacro %}
 
 
-{# Etiqueta com a bolinha de cor da categoria. A cor sai do id (8 cores que se repetem). #}
-{% macro etiqueta(nome, categoria_id) -%}
-<span class="etiqueta cor-{{ categoria_id % 8 }}"><span class="bolinha"></span>{{ nome }}</span>
+{# Classe da cor de uma categoria. Sem categoria (None) fica cinzento. #}
+{% macro classe_cor(cor) -%}
+{{ "cor-%d" % cor if cor is not none else "cor-nenhuma" }}
+{%- endmacro %}
+
+
+{# Etiqueta com a bolinha de cor da categoria #}
+{% macro etiqueta(nome, cor) -%}
+<span class="etiqueta {{ classe_cor(cor) }}"><span class="bolinha"></span>{{ nome or "Sem categoria" }}</span>
 {%- endmacro %}
 
 
 {#
-  Lista para escolher a categoria, com a opção "Nova categoria..." no fim.
-  Quando escolhes essa opção, o JavaScript mostra a caixa para escreveres o nome.
+  Lista para escolher a categoria, com "Sem categoria" no início e "Nova categoria..." no fim.
+  Quando escolhes "Nova categoria...", o JavaScript mostra a caixa para escreveres o nome.
 #}
 {% macro campo_categoria(categorias, selecionada) -%}
 <span class="campo-categoria">
   <select name="categoria_id" aria-label="Categoria">
+    <option value="" {% if not selecionada %}selected{% endif %}>Sem categoria</option>
     {% for c in categorias %}
-    <option value="{{ c.id }}" {% if c.id == selecionada or (not selecionada and c.nome == 'Outros') %}selected{% endif %}>{{ c.nome }}</option>
+    <option value="{{ c.id }}" {% if c.id == selecionada %}selected{% endif %}>{{ c.nome }}</option>
     {% endfor %}
     <option value="nova">Nova categoria...</option>
   </select>
   <input type="text" name="nova_categoria" placeholder="Nome da nova categoria" class="escondido" maxlength="40">
+</span>
+{%- endmacro %}
+
+
+{# Fila de bolinhas para escolher a cor. São botões de rádio disfarçados. #}
+{% macro seletor_cor(selecionada, total) -%}
+<span class="seletor-cor" role="radiogroup" aria-label="Cor">
+  {% for n in range(total) %}
+  <label class="cor-{{ n }}" title="Cor {{ n + 1 }}">
+    <input type="radio" name="cor" value="{{ n }}" {% if n == selecionada %}checked{% endif %}>
+    <span class="bolinha"></span>
+  </label>
+  {% endfor %}
 </span>
 {%- endmacro %}

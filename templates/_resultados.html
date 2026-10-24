@@ -1,16 +1,23 @@
 {# Bloco dos resultados. Usado na página inicial e devolvido sozinho por /pesquisa. #}
-{% from "_componentes.html" import icone, etiqueta, campo_categoria %}
+{% from "_componentes.html" import icone, etiqueta, campo_categoria, classe_cor %}
 
 {# Filtro por categoria: cada "pastilha" é um link que mantém o que escreveste #}
 <nav class="filtros" aria-label="Filtrar por categoria">
   <a href="{{ url_for('inicio', q=termo or None) }}"
-     class="filtro {% if not categoria_atual %}ativo{% endif %}">Todas</a>
+     class="filtro {% if categoria_atual is none %}ativo{% endif %}">Todas</a>
   {% for c in categorias %}
   <a href="{{ url_for('inicio', q=termo or None, cat=c.id) }}"
-     class="filtro cor-{{ c.id % 8 }} {% if c.id == categoria_atual %}ativo{% endif %}">
+     class="filtro cor-{{ c.cor }} {% if c.id == categoria_atual %}ativo{% endif %}">
     <span class="bolinha"></span>{{ c.nome }} <span class="contagem">{{ c.total }}</span>
   </a>
   {% endfor %}
+  {% if sem_categoria %}
+  <a href="{{ url_for('inicio', q=termo or None, cat=0) }}"
+     class="filtro cor-nenhuma {% if categoria_atual == 0 %}ativo{% endif %}">
+    <span class="bolinha"></span>Sem categoria <span class="contagem">{{ sem_categoria }}</span>
+  </a>
+  {% endif %}
+  <a href="{{ url_for('categorias') }}" class="filtro gerir" title="Criar e organizar categorias">{{ icone('mais') }} Categoria</a>
 </nav>
 
 {% if mostrar_criar %}
@@ -28,9 +35,9 @@
 <ul class="grelha-temas">
   {% for tema in temas %}
   <li>
-    <a href="{{ url_for('ver_tema', tema_id=tema.id) }}" class="cartao tema cor-{{ tema.categoria_id % 8 }}">
+    <a href="{{ url_for('ver_tema', tema_id=tema.id) }}" class="cartao tema {{ classe_cor(tema.categoria_cor) }}">
       <span class="nome">{{ tema.nome }}</span>
-      {{ etiqueta(tema.categoria, tema.categoria_id) }}
+      {{ etiqueta(tema.categoria, tema.categoria_cor) }}
       <span class="resumo">
         {{ tema.total_entradas }} {{ "entrada" if tema.total_entradas == 1 else "entradas" }}
         {% if tema.por_fazer %}<span class="pendentes">{{ tema.por_fazer }} por fazer</span>{% endif %}
@@ -41,8 +48,13 @@
   {% endfor %}
 </ul>
 {% elif not termo %}
-<p class="vazio">
-  {% if categoria_atual %}Não há temas nesta categoria.
-  {% else %}Ainda não tens temas. Escreve um nome acima para criares o primeiro.{% endif %}
-</p>
+<div class="vazio">
+  {% if categoria_atual is not none %}
+  <p>Não há temas aqui.</p>
+  {% else %}
+  <p class="vazio-titulo">O teu caderno está vazio.</p>
+  <p>Escreve o nome de um tema na barra acima para o criares.<br>
+     Se quiseres arrumar os temas por gavetas, cria primeiro as tuas <a href="{{ url_for('categorias') }}">categorias</a>.</p>
+  {% endif %}
+</div>
 {% endif %}

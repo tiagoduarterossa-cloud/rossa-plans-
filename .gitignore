@@ -1,5 +1,8 @@
-# A base de dados tem os teus dados pessoais: nunca vai para o Git
+# Os teus dados pessoais: nunca vão para o Git
+caderno.cofre
+caderno.tmp
 caderno.db
+caderno-antigo-NAO-ENCRIPTADO.db
 *.db-journal
 copias/
 

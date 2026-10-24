@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% from "_componentes.html" import icone, etiqueta, campo_categoria %}
+{% from "_componentes.html" import icone, etiqueta, campo_categoria, classe_cor %}
 
 {% block titulo %}{{ tema.nome }} · Caderno{% endblock %}
+{% block classe_main %}largo{% endblock %}
 
 {% block conteudo %}
 <a href="{{ url_for('inicio') }}" class="voltar">{{ icone('voltar') }} Todos os temas</a>
@@ -23,7 +24,7 @@
       </div>
     </div>
     <p class="detalhes">
-      {{ etiqueta(tema.categoria, tema.categoria_id) }}
+      {{ etiqueta(tema.categoria, tema.categoria_cor) }}
       <span>{{ entradas | length }} {{ "entrada" if entradas | length == 1 else "entradas" }}</span>
       <span id="contador-por-fazer" {% if not por_fazer %}class="escondido"{% endif %}>
         · <strong class="pendentes"><span>{{ por_fazer }}</span> por fazer</strong>
@@ -46,60 +47,119 @@
   </form>
 </header>
 
-{# Nova entrada. O tipo escolhe-se com dois botões de rádio desenhados como interruptor. #}
-<form action="{{ url_for('acrescentar_entrada', tema_id=tema.id) }}" method="post" class="cartao nova-entrada">
-  <textarea name="texto" rows="3" placeholder="Escreve uma nota ou uma tarefa..." required autofocus></textarea>
-  <div class="linha">
-    <div class="interruptor" role="radiogroup" aria-label="Tipo de entrada">
-      <label><input type="radio" name="tipo" value="nota" checked>{{ icone('nota') }} Nota</label>
-      <label><input type="radio" name="tipo" value="tarefa">{{ icone('tarefa') }} Tarefa</label>
-    </div>
-    <span class="dica"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> para guardar</span>
-    <button type="submit" class="botao">{{ icone('mais') }} Acrescentar</button>
-  </div>
-</form>
-
-{% if entradas %}
-<ul class="lista-entradas">
-  {% for entrada in entradas %}
-  <li id="entrada-{{ entrada.id }}"
-      class="cartao entrada {{ entrada.tipo }} {% if entrada.feito %}feito{% endif %}" data-editavel>
-
-    <div class="modo-ver">
-      {% if entrada.tipo == "tarefa" %}
-      <form action="{{ url_for('alternar_feito', entrada_id=entrada.id) }}" method="post" class="form-feito">
-        <input type="checkbox" {% if entrada.feito %}checked{% endif %} aria-label="Tarefa feita">
-        <noscript><button type="submit">Guardar</button></noscript>
-      </form>
-      {% else %}
-      <span class="tipo-icone" title="Nota">{{ icone('nota') }}</span>
-      {% endif %}
-
-      <div class="corpo">
-        <p>{{ entrada.texto }}</p>
-        <time>{{ entrada.criado_em | data }}</time>
-      </div>
-
-      <div class="acoes-entrada">
-        <button type="button" class="botao-icone" data-alternar title="Editar">{{ icone('lapis') }}</button>
-        <form action="{{ url_for('apagar_entrada', entrada_id=entrada.id) }}" method="post"
-              data-confirmar="Vais apagar esta {{ entrada.tipo }}. Isto não se pode desfazer.">
-          <button type="submit" class="botao-icone perigo" title="Apagar">{{ icone('lixo') }}</button>
-        </form>
-      </div>
-    </div>
-
-    <form action="{{ url_for('editar_entrada', entrada_id=entrada.id) }}" method="post" class="modo-editar">
-      <textarea name="texto" rows="3" required>{{ entrada.texto }}</textarea>
-      <div class="acoes">
-        <button type="button" class="botao secundario" data-alternar>Cancelar</button>
-        <button type="submit" class="botao">Guardar</button>
+<div class="tema-grelha">
+  {# ----- Coluna principal: entradas ----- #}
+  <section class="coluna-entradas">
+    {# Nova entrada. O tipo escolhe-se com dois botões de rádio desenhados como interruptor. #}
+    <form action="{{ url_for('acrescentar_entrada', tema_id=tema.id) }}" method="post" class="cartao nova-entrada">
+      <textarea name="texto" rows="3" placeholder="Escreve uma nota ou uma tarefa..." required autofocus></textarea>
+      <div class="linha">
+        <div class="interruptor" role="radiogroup" aria-label="Tipo de entrada">
+          <label><input type="radio" name="tipo" value="nota" checked>{{ icone('nota') }} Nota</label>
+          <label><input type="radio" name="tipo" value="tarefa">{{ icone('tarefa') }} Tarefa</label>
+        </div>
+        <span class="dica"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+        <button type="submit" class="botao">{{ icone('mais') }} Acrescentar</button>
       </div>
     </form>
-  </li>
-  {% endfor %}
-</ul>
-{% else %}
-<p class="vazio">Este tema ainda não tem entradas. Escreve a primeira acima.</p>
-{% endif %}
+
+    {% if entradas %}
+    <ul class="lista-entradas">
+      {% for entrada in entradas %}
+      <li id="entrada-{{ entrada.id }}"
+          class="cartao entrada {{ entrada.tipo }} {% if entrada.feito %}feito{% endif %}" data-editavel>
+
+        <div class="modo-ver">
+          {% if entrada.tipo == "tarefa" %}
+          <form action="{{ url_for('alternar_feito', entrada_id=entrada.id) }}" method="post" class="form-feito">
+            <input type="checkbox" {% if entrada.feito %}checked{% endif %} aria-label="Tarefa feita">
+            <noscript><button type="submit">Guardar</button></noscript>
+          </form>
+          {% else %}
+          <span class="tipo-icone" title="Nota">{{ icone('nota') }}</span>
+          {% endif %}
+
+          <div class="corpo">
+            <p>{{ entrada.texto }}</p>
+            <time>{{ entrada.criado_em | data }}</time>
+          </div>
+
+          <div class="acoes-entrada">
+            <button type="button" class="botao-icone" data-alternar title="Editar">{{ icone('lapis') }}</button>
+            <form action="{{ url_for('apagar_entrada', entrada_id=entrada.id) }}" method="post"
+                  data-confirmar="Vais apagar esta {{ entrada.tipo }}. Isto não se pode desfazer.">
+              <button type="submit" class="botao-icone perigo" title="Apagar">{{ icone('lixo') }}</button>
+            </form>
+          </div>
+        </div>
+
+        <form action="{{ url_for('editar_entrada', entrada_id=entrada.id) }}" method="post" class="modo-editar">
+          <textarea name="texto" rows="3" required>{{ entrada.texto }}</textarea>
+          <div class="acoes">
+            <button type="button" class="botao secundario" data-alternar>Cancelar</button>
+            <button type="submit" class="botao">Guardar</button>
+          </div>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="vazio">Este tema ainda não tem entradas. Escreve a primeira acima.</p>
+    {% endif %}
+  </section>
+
+  {# ----- Coluna lateral: o mentalista e a web ----- #}
+  <aside class="coluna-lateral">
+    <section class="cartao painel">
+      <h2>{{ icone('olho') }} Ligações</h2>
+      {% if ligacoes %}
+      <p class="painel-sub">O que este tema tem em comum com os outros.</p>
+      <ul class="lista-ligacoes">
+        {% for l in ligacoes %}
+        <li>
+          <a href="{{ url_for('ver_tema', tema_id=l.tema.id) }}" class="ligacao {{ classe_cor(l.tema.categoria_cor) }}">
+            <span class="ligacao-topo">
+              <span class="nome">{{ l.tema.nome }}</span>
+              {% if l.mencionado %}<span class="selo" title="Um dos temas escreve o nome do outro">citado</span>{% endif %}
+            </span>
+            <span class="forca" title="Força da ligação"><span style="width: {{ l.forca }}%"></span></span>
+            {% if l.palavras %}
+            <span class="pistas">
+              {% for p in l.palavras %}<span class="pista">{{ p }}</span>{% endfor %}
+            </span>
+            {% endif %}
+            {% for e in l.exemplos %}
+            <span class="exemplo">"{{ e.texto | truncate(110) }}"</span>
+            {% endfor %}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="painel-sub">
+        Ainda não encontrei ligações. Quanto mais escreveres nos teus temas,
+        mais pontos há para ligar.
+      </p>
+      {% endif %}
+    </section>
+
+    <section class="cartao painel" id="painel-web"
+             data-endereco="{{ url_for('pesquisa_web', tema_id=tema.id) }}">
+      <h2>{{ icone('globo') }} Na web</h2>
+      <p class="painel-sub">
+        Procura <strong>{{ tema.nome }}</strong> na Wikipédia e liga o que encontrar ao teu caderno.
+        Só o nome do tema sai do computador; as tuas notas não.
+      </p>
+      <div class="linha">
+        <div class="interruptor pequeno" role="radiogroup" aria-label="Língua">
+          {% for codigo, nome in linguas.items() %}
+          <label title="{{ nome }}"><input type="radio" name="lingua" value="{{ codigo }}" {% if loop.first %}checked{% endif %}>{{ codigo | upper }}</label>
+          {% endfor %}
+        </div>
+        <button type="button" class="botao secundario" id="botao-web">{{ icone('pesquisa') }} Procurar</button>
+      </div>
+      <div id="resultados-web" aria-live="polite"></div>
+    </section>
+  </aside>
+</div>
 {% endblock %}

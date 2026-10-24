@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import icone, seletor_cor %}
+
+{% block titulo %}Categorias · Caderno{% endblock %}
+
+{% block conteudo %}
+<a href="{{ url_for('inicio') }}" class="voltar">{{ icone('voltar') }} Todos os temas</a>
+<h1 class="titulo-pagina">Categorias</h1>
+<p class="subtitulo">As tuas gavetas para arrumar os temas. Cria as que quiseres.</p>
+
+{# Criar uma categoria nova #}
+<form action="{{ url_for('criar_categoria') }}" method="post" class="cartao nova-categoria">
+  <input type="text" name="nome" placeholder="Nome da nova categoria" maxlength="40" required>
+  <div class="linha">
+    {{ seletor_cor(categorias | length % numero_cores, numero_cores) }}
+    <button type="submit" class="botao">{{ icone('mais') }} Criar</button>
+  </div>
+</form>
+
+{% if categorias %}
+<ul class="lista-categorias">
+  {% for c in categorias %}
+  <li class="cartao cor-{{ c.cor }}" data-editavel>
+    <div class="modo-ver">
+      <span class="bolinha grande"></span>
+      <a href="{{ url_for('inicio', cat=c.id) }}" class="nome">{{ c.nome }}</a>
+      <span class="contagem">{{ c.total }} {{ "tema" if c.total == 1 else "temas" }}</span>
+      <div class="acoes-entrada">
+        <button type="button" class="botao-icone" data-alternar title="Editar">{{ icone('lapis') }}</button>
+        <form action="{{ url_for('apagar_categoria', categoria_id=c.id) }}" method="post"
+              data-confirmar="Vais apagar a categoria &quot;{{ c.nome }}&quot;. {% if c.total %}Os {{ c.total }} temas dela não são apagados, ficam sem categoria.{% endif %}">
+          <button type="submit" class="botao-icone perigo" title="Apagar">{{ icone('lixo') }}</button>
+        </form>
+      </div>
+    </div>
+
+    <form action="{{ url_for('editar_categoria', categoria_id=c.id) }}" method="post" class="modo-editar">
+      <input type="text" name="nome" value="{{ c.nome }}" maxlength="40" required>
+      <div class="linha">
+        {{ seletor_cor(c.cor, numero_cores) }}
+        <div class="acoes">
+          <button type="button" class="botao secundario" data-alternar>Cancelar</button>
+          <button type="submit" class="botao">Guardar</button>
+        </div>
+      </div>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="vazio">Ainda não tens categorias. Cria a primeira acima.</p>
+{% endif %}
+
+{% if sem_categoria %}
+<p class="subtitulo">
+  <a href="{{ url_for('inicio', cat=0) }}">{{ sem_categoria }} {{ "tema" if sem_categoria == 1 else "temas" }} sem categoria</a>
+</p>
+{% endif %}
+{% endblock %}
